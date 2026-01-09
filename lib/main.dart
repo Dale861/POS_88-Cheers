@@ -549,77 +549,260 @@ class _POSHomePageState extends State<POSHomePage> {
     }
   }
 
-  Future<void> printCustomerReceipt(double amountPaid, double change, String saleType) async {
-    if (!isConnected) {
-      _showSnackBar('Printer not connected');
-      return;
-    }
+Future<void> printCustomerReceipt(double amountPaid, double change, String saleType) async {
+  // Show receipt preview immediately
+  await _showReceiptPreview(amountPaid, change, saleType);
+}
 
-    try {
-      String receipt = _generateReceipt(amountPaid, change, saleType);
-      List<int> bytes = [];
-      bytes.addAll([27, 64]); // Initialize
-      bytes.addAll([27, 97, 1]); // Center align
-      bytes.addAll(utf8.encode(receipt));
-      bytes.addAll([27, 100, 3]); // Feed lines
-      bytes.addAll([29, 86, 1]); // Cut paper
+Future<void> _showReceiptPreview(double amountPaid, double change, String saleType) async {
+  final total = getCartTotal();
+  final now = DateTime.now();
+  final dateFormat = DateFormat('MM/dd/yyyy');
+  final timeFormat = DateFormat('hh:mm a');
 
-      if (connectionType == 'Bluetooth' && writeCharacteristic != null) {
-        const chunkSize = 20;
-        for (var i = 0; i < bytes.length; i += chunkSize) {
-          var end = (i + chunkSize < bytes.length) ? i + chunkSize : bytes.length;
-          await writeCharacteristic!.write(bytes.sublist(i, end), withoutResponse: false);
-          await Future.delayed(const Duration(milliseconds: 50));
-        }
-      } else if (connectionType == 'USB' && connectedUsbPort != null) {
-        await connectedUsbPort!.write(Uint8List.fromList(bytes));
+  final shouldPrint = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false, // Must choose Print or Skip
+    builder: (ctx) => Dialog(
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 650, maxWidth: 400),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [Color(0xFFD97706), Color(0xFFFBBF24)]),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.white, size: 28),
+                  SizedBox(width: 8),
+                  Text('Sale Completed!', 
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text('88 CHEERS', 
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                      const Text('Wholesale Drinks & Beer', 
+                        style: TextStyle(fontSize: 14)),
+                      const Divider(height: 24),
+                      const Text('** CUSTOMER COPY **', 
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Divider(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Date: ${dateFormat.format(now)}'),
+                          Text('Time: ${timeFormat.format(now)}'),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Text('Type: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: saleType == 'Delivery' ? Colors.blue.shade100 : Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(saleType, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      ...cart.map((item) {
+                        final priceType = item.isDelivery ? ' (D)' : ' (W)';
+                        final sizeType = item.isCase ? ' - 1 Case' : ' - 1/2 Case';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${item.product.name}$priceType$sizeType',
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('  ${item.quantity} x ₱${item.price.toStringAsFixed(2)}'),
+                                  Text('₱${item.total.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      const Divider(height: 24),
+                      _buildReceiptRow('TOTAL:', total),
+                      _buildReceiptRow('PAID:', amountPaid),
+                      _buildReceiptRow('CHANGE:', change, highlight: true),
+                      const Divider(height: 24),
+                      const Text('Thank you for your purchase!',
+                        style: TextStyle(fontStyle: FontStyle.italic)),
+                      const Text('Please come again!',
+                        style: TextStyle(fontStyle: FontStyle.italic)),
+                      const SizedBox(height: 12),
+                      const Text('(W) = Walk-in  (D) = Delivery',
+                        style: TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: Color(0xFFD97706), width: 2),
+                      ),
+                      child: const Text('Skip Print', 
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      icon: const Icon(Icons.print),
+                      label: const Text('Print', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFBBF24),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  // If user chose to print
+  if (shouldPrint == true) {
+    await _printToPhysicalPrinter(amountPaid, change, saleType);
+  }
+}
+
+Widget _buildReceiptRow(String label, double amount, {bool highlight = false}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(
+          fontSize: highlight ? 16 : 14,
+          fontWeight: FontWeight.bold,
+        )),
+        Text('₱${amount.toStringAsFixed(2)}', style: TextStyle(
+          fontSize: highlight ? 18 : 14,
+          fontWeight: FontWeight.bold,
+          color: highlight ? const Color(0xFFD97706) : null,
+        )),
+      ],
+    ),
+  );
+}
+
+Future<void> _printToPhysicalPrinter(double amountPaid, double change, String saleType) async {
+  if (!isConnected) {
+    _showSnackBar('Printer not connected - Receipt preview shown only');
+    return;
+  }
+
+  try {
+    String receipt = _generateReceipt(amountPaid, change, saleType);
+    List<int> bytes = [];
+    bytes.addAll([27, 64]); // Initialize
+    bytes.addAll([27, 97, 1]); // Center align
+    bytes.addAll(utf8.encode(receipt));
+    bytes.addAll([27, 100, 3]); // Feed lines
+    bytes.addAll([29, 86, 1]); // Cut paper
+
+    if (connectionType == 'Bluetooth' && writeCharacteristic != null) {
+      const chunkSize = 20;
+      for (var i = 0; i < bytes.length; i += chunkSize) {
+        var end = (i + chunkSize < bytes.length) ? i + chunkSize : bytes.length;
+        await writeCharacteristic!.write(bytes.sublist(i, end), withoutResponse: false);
+        await Future.delayed(const Duration(milliseconds: 50));
       }
-
-      _showSnackBar('Receipt printed!');
-    } catch (e) {
-      _showSnackBar('Print error: $e');
+    } else if (connectionType == 'USB' && connectedUsbPort != null) {
+      await connectedUsbPort!.write(Uint8List.fromList(bytes));
     }
-  }
 
-  String _generateReceipt(double amountPaid, double change, String saleType) {
-    final total = getCartTotal();
-    final now = DateTime.now();
-    final dateFormat = DateFormat('MM/dd/yyyy');
-    final timeFormat = DateFormat('hh:mm a');
-    
-    String receipt = '\n================================\n';
-    receipt += '         88 CHEERS\n';
-    receipt += '    Wholesale Drinks & Beer\n';
-    receipt += '================================\n';
-    receipt += '     ** CUSTOMER COPY **\n';
-    receipt += '================================\n';
-    receipt += 'Date: ${dateFormat.format(now)}\n';
-    receipt += 'Time: ${timeFormat.format(now)}\n';
-    receipt += 'Type: $saleType\n';
-    receipt += '================================\n\n';
-    
-    for (var item in cart) {
-      final priceType = item.isDelivery ? ' (D)' : ' (W)';
-      final sizeType = item.isCase ? ' - 1 Case' : ' - 1/2 Case';
-      receipt += '${item.product.name}$priceType$sizeType\n';
-      receipt += '  ${item.quantity} x P${item.price.toStringAsFixed(2)}';
-      receipt += ' = P${item.total.toStringAsFixed(2)}\n\n';
-    }
-    
-    receipt += '================================\n';
-    receipt += 'TOTAL:        P${total.toStringAsFixed(2)}\n';
-    receipt += 'PAID:         P${amountPaid.toStringAsFixed(2)}\n';
-    receipt += 'CHANGE:       P${change.toStringAsFixed(2)}\n';
-    receipt += '================================\n';
-    receipt += '  Thank you for your purchase!\n';
-    receipt += '      Please come again!\n';
-    receipt += '================================\n';
-    receipt += '(W) = Walk-in  (D) = Delivery\n';
-    receipt += '================================\n\n\n';
-    
-    return receipt;
+    _showSnackBar('Receipt printed successfully!');
+  } catch (e) {
+    _showSnackBar('Print error: $e');
   }
+}
 
+String _generateReceipt(double amountPaid, double change, String saleType) {
+  final total = getCartTotal();
+  final now = DateTime.now();
+  final dateFormat = DateFormat('MM/dd/yyyy');
+  final timeFormat = DateFormat('hh:mm a');
+  
+  String receipt = '\n================================\n';
+  receipt += '         88 CHEERS\n';
+  receipt += '    Wholesale Drinks & Beer\n';
+  receipt += '================================\n';
+  receipt += '     ** CUSTOMER COPY **\n';
+  receipt += '================================\n';
+  receipt += 'Date: ${dateFormat.format(now)}\n';
+  receipt += 'Time: ${timeFormat.format(now)}\n';
+  receipt += 'Type: $saleType\n';
+  receipt += '================================\n\n';
+  
+  for (var item in cart) {
+    final priceType = item.isDelivery ? ' (D)' : ' (W)';
+    final sizeType = item.isCase ? ' - 1 Case' : ' - 1/2 Case';
+    receipt += '${item.product.name}$priceType$sizeType\n';
+    receipt += '  ${item.quantity} x P${item.price.toStringAsFixed(2)}';
+    receipt += ' = P${item.total.toStringAsFixed(2)}\n\n';
+  }
+  
+  receipt += '================================\n';
+  receipt += 'TOTAL:        P${total.toStringAsFixed(2)}\n';
+  receipt += 'PAID:         P${amountPaid.toStringAsFixed(2)}\n';
+  receipt += 'CHANGE:       P${change.toStringAsFixed(2)}\n';
+  receipt += '================================\n';
+  receipt += '  Thank you for your purchase!\n';
+  receipt += '      Please come again!\n';
+  receipt += '================================\n';
+  receipt += '(W) = Walk-in  (D) = Delivery\n';
+  receipt += '================================\n\n\n';
+  
+  return receipt;
+}
   Future<void> saveSaleToDatabase(double amountPaid, double change, String saleType) async {
     final items = cart.map((item) => {
       'name': item.product.name,
@@ -1608,42 +1791,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
     // Save to database first (Merchant digital copy)
     await widget.onSaveSale(amountPaid, change, saleType);
 
-    // Show print dialog for customer
-    final shouldPrint = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Print Receipt'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 60),
-            const SizedBox(height: 16),
-            const Text('Sale recorded successfully!', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 8),
-            Text('Change: ₱${change.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, color: Color(0xFFD97706), fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            const Text('Print customer receipt?', textAlign: TextAlign.center),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Skip'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(ctx, true),
-            icon: const Icon(Icons.print),
-            label: const Text('Print'),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBBF24)),
-          ),
-        ],
-      ),
-    );
+    // Show receipt preview directly (this calls the preview in POSHomePage)
+    await widget.onPrintReceipt(amountPaid, change, saleType);
 
-    if (shouldPrint == true) {
-      await widget.onPrintReceipt(amountPaid, change, saleType);
-    }
-
+    // Clear cart and go back
     widget.cart.clear();
     widget.onUpdateCart(widget.cart);
     Navigator.pop(context);
