@@ -1,0 +1,40 @@
+name: pos_88_cheers
+description: "88 Cheers POS System - Wholesale Drinks & Beer"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI Icons
+  cupertino_icons: ^1.0.8
+  
+  # Bluetooth for receipt printing
+  flutter_blue_plus: ^1.32.12
+  usb_serial: ^0.5.0
+  pdf: ^3.10.7              # NEW - for PDF generation
+  path_provider: ^2.1.1     # NEW - for saving files
+  share_plus: ^7.2.1  
+  # Database for products and sales
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  
+  # Date/Time formatting
+  intl: ^0.19.0
+  image_picker: ^1.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/

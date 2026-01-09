@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- This allows any USB device to connect -->
+    <usb-device />
+</resources>
