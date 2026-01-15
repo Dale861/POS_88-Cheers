@@ -15,7 +15,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   
   # Bluetooth for receipt printing
-  flutter_blue_plus: ^1.32.12
   usb_serial: ^0.5.0
   pdf: ^3.10.7              # NEW - for PDF generation
   path_provider: ^2.1.1     # NEW - for saving files
@@ -27,6 +26,9 @@ dependencies:
   # Date/Time formatting
   intl: ^0.19.0
   image_picker: ^1.0.7
+
+  permission_handler: ^11.0.1
+  print_bluetooth_thermal: ^1.1.9
 
 dev_dependencies:
   flutter_test:

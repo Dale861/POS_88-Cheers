@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- This allows any USB device to connect -->
-    <usb-device />
+    <usb-device vendor-id="1155" product-id="22336" /> <!-- Common thermal printer -->
+    <usb-device vendor-id="1027" /> <!-- Prolific -->
+    <usb-device vendor-id="6790" /> <!-- Qinheng -->
+    <usb-device vendor-id="1659" /> <!-- FTDI -->
 </resources>

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as path;
 import 'package:intl/intl.dart';
@@ -81,56 +81,12 @@ class DatabaseHelper {
       )
     ''');
 
-    // Insert products with prices from the image
-    await db.insert('products', {
-      'name': 'San Mig Lights',
-      'walk_in_case': 1070.00,
-      'walk_in_half': 537.00,
-      'delivery_case': 1075.00,
-      'delivery_half': 538.00,
-      'category': 'Beer',
-      'image_path': 'assets/images/sanmig_lights.png'
-    });
-
-    await db.insert('products', {
-      'name': 'Pilsen',
-      'walk_in_case': 930.00,
-      'walk_in_half': 465.00,
-      'delivery_case': 935.00,
-      'delivery_half': 468.00,
-      'category': 'Beer',
-      'image_path': 'assets/images/pilsen.png'
-    });
-
-    await db.insert('products', {
-      'name': 'Stallion',
-      'walk_in_case': 993.00,
-      'walk_in_half': 497.00,
-      'delivery_case': 998.00,
-      'delivery_half': 499.00,
-      'category': 'Beer',
-      'image_path': 'assets/images/stallion.png'
-    });
-
-    await db.insert('products', {
-      'name': 'Red Horse 500',
-      'walk_in_case': 695.00,
-      'walk_in_half': 348.00,
-      'delivery_case': 700.00,
-      'delivery_half': 350.00,
-      'category': 'Beer',
-      'image_path': 'assets/images/redhorse500.png'
-    });
-
-    await db.insert('products', {
-      'name': 'Red Horse Litro',
-      'walk_in_case': 690.00,
-      'walk_in_half': 345.00,
-      'delivery_case': 695.00,
-      'delivery_half': 348.00,
-      'category': 'Beer',
-      'image_path': 'assets/images/redhorse_litro.png'
-    });
+    // Default Products
+    await db.insert('products', {'name': 'San Mig Lights', 'walk_in_case': 1070.0, 'walk_in_half': 537.0, 'delivery_case': 1075.0, 'delivery_half': 538.0, 'category': 'Beer', 'image_path': 'assets/images/sanmig_lights.png'});
+    await db.insert('products', {'name': 'Pilsen', 'walk_in_case': 930.0, 'walk_in_half': 465.0, 'delivery_case': 935.0, 'delivery_half': 468.0, 'category': 'Beer', 'image_path': 'assets/images/pilsen.png'});
+    await db.insert('products', {'name': 'Stallion', 'walk_in_case': 993.0, 'walk_in_half': 497.0, 'delivery_case': 998.0, 'delivery_half': 499.0, 'category': 'Beer', 'image_path': 'assets/images/stallion.png'});
+    await db.insert('products', {'name': 'Red Horse 500', 'walk_in_case': 695.0, 'walk_in_half': 348.0, 'delivery_case': 700.0, 'delivery_half': 350.0, 'category': 'Beer', 'image_path': 'assets/images/redhorse500.png'});
+    await db.insert('products', {'name': 'Red Horse Litro', 'walk_in_case': 690.0, 'walk_in_half': 345.0, 'delivery_case': 695.0, 'delivery_half': 348.0, 'category': 'Beer', 'image_path': 'assets/images/redhorse_litro.png'});
   }
 
   Future<List<Map<String, dynamic>>> getProducts() async {
@@ -179,28 +135,10 @@ class Product {
   final String imagePath;
   final String category;
 
-  Product({
-    this.id,
-    required this.name,
-    required this.walkInCase,
-    required this.walkInHalf,
-    required this.deliveryCase,
-    required this.deliveryHalf,
-    required this.imagePath,
-    required this.category,
-  });
+  Product({this.id, required this.name, required this.walkInCase, required this.walkInHalf, required this.deliveryCase, required this.deliveryHalf, required this.imagePath, required this.category});
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'walk_in_case': walkInCase,
-      'walk_in_half': walkInHalf,
-      'delivery_case': deliveryCase,
-      'delivery_half': deliveryHalf,
-      'image_path': imagePath,
-      'category': category,
-    };
+    return {'id': id, 'name': name, 'walk_in_case': walkInCase, 'walk_in_half': walkInHalf, 'delivery_case': deliveryCase, 'delivery_half': deliveryHalf, 'image_path': imagePath, 'category': category};
   }
 
   factory Product.fromMap(Map<String, dynamic> map) {
@@ -229,14 +167,9 @@ class CartItem {
   final Product product;
   int quantity;
   final bool isDelivery;
-  final bool isCase; // true = 1 case, false = 1/2 case
+  final bool isCase;
 
-  CartItem({
-    required this.product, 
-    this.quantity = 1, 
-    required this.isDelivery,
-    required this.isCase,
-  });
+  CartItem({required this.product, this.quantity = 1, required this.isDelivery, required this.isCase});
   
   double get price => product.getPrice(isDelivery, isCase);
   double get total => price * quantity;
@@ -251,13 +184,16 @@ class POSHomePage extends StatefulWidget {
 }
 
 class _POSHomePageState extends State<POSHomePage> {
+  
   List<Product> products = [];
   List<CartItem> cart = [];
-  BluetoothDevice? connectedDevice;
-  BluetoothCharacteristic? writeCharacteristic;
+  
+  // Updated Printer variables for print_bluetooth_thermal
+  BluetoothInfo? connectedBTDevice;
+  
   UsbPort? connectedUsbPort;
   bool isConnected = false;
-  String connectionType = 'None'; // 'Bluetooth', 'USB', or 'None'
+  String connectionType = 'None'; 
   int _selectedIndex = 0;
   bool isDeliveryMode = false;
 
@@ -265,7 +201,38 @@ class _POSHomePageState extends State<POSHomePage> {
   void initState() {
     super.initState();
     _loadProducts();
+    _checkExistingConnection();
   }
+
+Future<void> _checkExistingConnection() async {
+  try {
+    // Check and request Bluetooth permissions
+    bool hasPermission = await PrintBluetoothThermal.isPermissionBluetoothGranted;
+    
+    if (!hasPermission) {
+      _showSnackBar('Please enable Bluetooth permissions in app settings');
+      return;
+    }
+    
+    // Check if Bluetooth is enabled
+    bool isBluetoothEnabled = await PrintBluetoothThermal.bluetoothEnabled;
+    if (!isBluetoothEnabled) {
+      _showSnackBar('Please enable Bluetooth');
+      return;
+    }
+    
+    // Check if Bluetooth printer is connected
+    bool isConnectedBT = await PrintBluetoothThermal.connectionStatus;
+    if (isConnectedBT) {
+      setState(() {
+        isConnected = true;
+        connectionType = 'Bluetooth';
+      });
+    }
+  } catch (e) {
+    print('Error checking connection: $e');
+  }
+}
 
   Future<void> _loadProducts() async {
     final productMaps = await DatabaseHelper.instance.getProducts();
@@ -284,21 +251,9 @@ class _POSHomePageState extends State<POSHomePage> {
           children: [
             const Text('Select quantity:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _buildCaseOption(
-              context, 
-              product, 
-              isCase: true, 
-              label: '1 Case',
-              price: product.getPrice(isDeliveryMode, true),
-            ),
+            _buildCaseOption(context, product, isCase: true, label: '1 Case', price: product.getPrice(isDeliveryMode, true)),
             const SizedBox(height: 12),
-            _buildCaseOption(
-              context, 
-              product, 
-              isCase: false, 
-              label: '1/2 Case',
-              price: product.getPrice(isDeliveryMode, false),
-            ),
+            _buildCaseOption(context, product, isCase: false, label: '1/2 Case', price: product.getPrice(isDeliveryMode, false)),
           ],
         ),
       ),
@@ -308,10 +263,7 @@ class _POSHomePageState extends State<POSHomePage> {
   Widget _buildCaseOption(BuildContext context, Product product, {required bool isCase, required String label, required double price}) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFFDE68A), width: 2),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFFDE68A), width: 2)),
       child: InkWell(
         onTap: () {
           addToCart(product, isCase);
@@ -328,8 +280,7 @@ class _POSHomePageState extends State<POSHomePage> {
                 children: [
                   Text(label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text('₱${price.toStringAsFixed(2)}', 
-                    style: const TextStyle(fontSize: 16, color: Color(0xFFD97706), fontWeight: FontWeight.w600)),
+                  Text('₱${price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, color: Color(0xFFD97706), fontWeight: FontWeight.w600)),
                 ],
               ),
               const Icon(Icons.arrow_forward_ios, color: Color(0xFFD97706)),
@@ -343,24 +294,13 @@ class _POSHomePageState extends State<POSHomePage> {
   void addToCart(Product product, bool isCase) {
     setState(() {
       var existingItem = cart.firstWhere(
-        (item) => item.product.id == product.id && 
-                  item.isDelivery == isDeliveryMode && 
-                  item.isCase == isCase,
-        orElse: () => CartItem(
-          product: product, 
-          quantity: 0, 
-          isDelivery: isDeliveryMode,
-          isCase: isCase,
-        ),
+        (item) => item.product.id == product.id && item.isDelivery == isDeliveryMode && item.isCase == isCase,
+        orElse: () => CartItem(product: product, quantity: 0, isDelivery: isDeliveryMode, isCase: isCase),
       );
       if (existingItem.quantity > 0) {
         existingItem.quantity++;
       } else {
-        cart.add(CartItem(
-          product: product, 
-          isDelivery: isDeliveryMode,
-          isCase: isCase,
-        ));
+        cart.add(CartItem(product: product, isDelivery: isDeliveryMode, isCase: isCase));
       }
     });
   }
@@ -398,96 +338,80 @@ class _POSHomePageState extends State<POSHomePage> {
     }
   }
 
-  Future<void> connectToBluetoothPrinter() async {
-    try {
-      if (await FlutterBluePlus.isSupported == false) {
-        _showSnackBar('Bluetooth not supported');
-        return;
-      }
-
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => const Center(child: CircularProgressIndicator()),
-      );
-
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future.delayed(const Duration(seconds: 4));
-      List<ScanResult> devices = FlutterBluePlus.lastScanResults;
-      FlutterBluePlus.stopScan();
-
-      Navigator.pop(context);
-
-      if (devices.isEmpty) {
-        _showSnackBar('No Bluetooth devices found');
-        return;
-      }
-
-      BluetoothDevice? selectedDevice = await showDialog<BluetoothDevice>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Select Bluetooth Printer'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: devices.length,
-              itemBuilder: (context, index) {
-                final device = devices[index].device;
-                final name = device.advName.isNotEmpty 
-                    ? device.advName 
-                    : (device.platformName.isNotEmpty ? device.platformName : 'Unknown Device');
-                return ListTile(
-                  title: Text(name),
-                  subtitle: Text(device.remoteId.toString()),
-                  onTap: () => Navigator.pop(ctx, device),
-                );
-              },
-            ),
+Future<void> connectToBluetoothPrinter() async {
+  try {
+    // Check permissions first
+    bool hasPermission = await PrintBluetoothThermal.isPermissionBluetoothGranted;
+    if (!hasPermission) {
+      _showSnackBar('Bluetooth permission required. Please enable in app settings.');
+      return;
+    }
+    
+    // Check if Bluetooth is enabled
+    bool isBluetoothEnabled = await PrintBluetoothThermal.bluetoothEnabled;
+    if (!isBluetoothEnabled) {
+      _showSnackBar('Please turn on Bluetooth first');
+      return;
+    }
+    
+    // Get paired devices
+    List<BluetoothInfo> devices = await PrintBluetoothThermal.pairedBluetooths;
+    
+    if (devices.isEmpty) {
+      _showSnackBar('No paired Bluetooth devices found. Please pair your printer in Android settings first.');
+      return;
+    }
+    
+    BluetoothInfo? selectedDevice = await showDialog<BluetoothInfo>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Select Paired Printer'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: devices.length,
+            itemBuilder: (context, index) {
+              final device = devices[index];
+              return ListTile(
+                title: Text(device.name),
+                subtitle: Text(device.macAdress),
+                onTap: () => Navigator.pop(ctx, device),
+              );
+            },
           ),
         ),
-      );
-
-      if (selectedDevice != null) {
-        await selectedDevice.connect();
-        List<BluetoothService> services = await selectedDevice.discoverServices();
-        for (var service in services) {
-          for (var characteristic in service.characteristics) {
-            if (characteristic.properties.write) {
-              writeCharacteristic = characteristic;
-              break;
-            }
-          }
-          if (writeCharacteristic != null) break;
-        }
+      ),
+    );
+    
+    if (selectedDevice != null) {
+      // Disconnect if already connected
+      bool isConnectedBT = await PrintBluetoothThermal.connectionStatus;
+      if (isConnectedBT) await PrintBluetoothThermal.disconnect;
+      
+      // Connect to selected device
+      final result = await PrintBluetoothThermal.connect(macPrinterAddress: selectedDevice.macAdress);
+      
+      if (result) {
         setState(() {
-          connectedDevice = selectedDevice;
+          connectedBTDevice = selectedDevice;
           isConnected = true;
           connectionType = 'Bluetooth';
           connectedUsbPort = null;
         });
         _showSnackBar('Bluetooth printer connected!');
+      } else {
+        _showSnackBar('Failed to connect to printer');
       }
-    } catch (e) {
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      _showSnackBar('Error: $e');
     }
+  } catch (e) {
+    _showSnackBar('Bluetooth Error: $e');
   }
+}
 
   Future<void> connectToUsbPrinter() async {
     try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => const Center(child: CircularProgressIndicator()),
-      );
-
       List<UsbDevice> devices = await UsbSerial.listDevices();
-      
-      Navigator.pop(context);
-
       if (devices.isEmpty) {
         _showSnackBar('No USB devices found');
         return;
@@ -502,14 +426,10 @@ class _POSHomePageState extends State<POSHomePage> {
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: devices.length,
-              itemBuilder: (context, index) {
-                final device = devices[index];
-                return ListTile(
-                  title: Text(device.productName ?? 'USB Device'),
-                  subtitle: Text('Vendor ID: ${device.vid}, Product ID: ${device.pid}'),
-                  onTap: () => Navigator.pop(ctx, device),
-                );
-              },
+              itemBuilder: (context, index) => ListTile(
+                title: Text(devices[index].productName ?? 'USB Device'),
+                onTap: () => Navigator.pop(ctx, devices[index]),
+              ),
             ),
           ),
         ),
@@ -517,292 +437,83 @@ class _POSHomePageState extends State<POSHomePage> {
 
       if (selectedDevice != null) {
         UsbPort? port = await selectedDevice.create();
-        bool opened = await port!.open();
-        
-        if (opened) {
-          await port.setDTR(true);
-          await port.setRTS(true);
-          await port.setPortParameters(
-            9600, 
-            UsbPort.DATABITS_8, 
-            UsbPort.STOPBITS_1, 
-            UsbPort.PARITY_NONE
-          );
-          
+        if (await port!.open()) {
+          await port.setPortParameters(9600, UsbPort.DATABITS_8, UsbPort.STOPBITS_1, UsbPort.PARITY_NONE);
           setState(() {
             connectedUsbPort = port;
             isConnected = true;
             connectionType = 'USB';
-            connectedDevice = null;
-            writeCharacteristic = null;
+            connectedBTDevice = null;
           });
           _showSnackBar('USB printer connected!');
-        } else {
-          _showSnackBar('Failed to open USB connection');
         }
       }
     } catch (e) {
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
       _showSnackBar('USB Error: $e');
     }
   }
 
 Future<void> printCustomerReceipt(double amountPaid, double change, String saleType) async {
-  // Show receipt preview immediately
-  await _showReceiptPreview(amountPaid, change, saleType);
-}
-
-Future<void> _showReceiptPreview(double amountPaid, double change, String saleType) async {
-  final total = getCartTotal();
-  final now = DateTime.now();
-  final dateFormat = DateFormat('MM/dd/yyyy');
-  final timeFormat = DateFormat('hh:mm a');
-
-  final shouldPrint = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false, // Must choose Print or Skip
-    builder: (ctx) => Dialog(
-      child: Container(
-        constraints: const BoxConstraints(maxHeight: 650, maxWidth: 400),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [Color(0xFFD97706), Color(0xFFFBBF24)]),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.check_circle, color: Colors.white, size: 28),
-                  SizedBox(width: 8),
-                  Text('Sale Completed!', 
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Container(
-                color: Colors.white,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Text('88 CHEERS', 
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                      const Text('Wholesale Drinks & Beer', 
-                        style: TextStyle(fontSize: 14)),
-                      const Divider(height: 24),
-                      const Text('** CUSTOMER COPY **', 
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                      const Divider(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Date: ${dateFormat.format(now)}'),
-                          Text('Time: ${timeFormat.format(now)}'),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Text('Type: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: saleType == 'Delivery' ? Colors.blue.shade100 : Colors.green.shade100,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(saleType, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 24),
-                      ...cart.map((item) {
-                        final priceType = item.isDelivery ? ' (D)' : ' (W)';
-                        final sizeType = item.isCase ? ' - 1 Case' : ' - 1/2 Case';
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('${item.product.name}$priceType$sizeType',
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('  ${item.quantity} x ₱${item.price.toStringAsFixed(2)}'),
-                                  Text('₱${item.total.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      const Divider(height: 24),
-                      _buildReceiptRow('TOTAL:', total),
-                      _buildReceiptRow('PAID:', amountPaid),
-                      _buildReceiptRow('CHANGE:', change, highlight: true),
-                      const Divider(height: 24),
-                      const Text('Thank you for your purchase!',
-                        style: TextStyle(fontStyle: FontStyle.italic)),
-                      const Text('Please come again!',
-                        style: TextStyle(fontStyle: FontStyle.italic)),
-                      const SizedBox(height: 12),
-                      const Text('(W) = Walk-in  (D) = Delivery',
-                        style: TextStyle(fontSize: 10, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: const BorderSide(color: Color(0xFFD97706), width: 2),
-                      ),
-                      child: const Text('Skip Print', 
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      icon: const Icon(Icons.print),
-                      label: const Text('Print', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFBBF24),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  // If user chose to print
-  if (shouldPrint == true) {
-    await _printToPhysicalPrinter(amountPaid, change, saleType);
-  }
-}
-
-Widget _buildReceiptRow(String label, double amount, {bool highlight = false}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(
-          fontSize: highlight ? 16 : 14,
-          fontWeight: FontWeight.bold,
-        )),
-        Text('₱${amount.toStringAsFixed(2)}', style: TextStyle(
-          fontSize: highlight ? 18 : 14,
-          fontWeight: FontWeight.bold,
-          color: highlight ? const Color(0xFFD97706) : null,
-        )),
-      ],
-    ),
-  );
-}
-
-Future<void> _printToPhysicalPrinter(double amountPaid, double change, String saleType) async {
   if (!isConnected) {
-    _showSnackBar('Printer not connected - Receipt preview shown only');
+    _showSnackBar('Printer not connected');
     return;
   }
 
-  try {
-    String receipt = _generateReceipt(amountPaid, change, saleType);
-    List<int> bytes = [];
-    bytes.addAll([27, 64]); // Initialize
-    bytes.addAll([27, 97, 1]); // Center align
-    bytes.addAll(utf8.encode(receipt));
-    bytes.addAll([27, 100, 3]); // Feed lines
-    bytes.addAll([29, 86, 1]); // Cut paper
+  final total = getCartTotal();
+  final now = DateTime.now();
 
-    if (connectionType == 'Bluetooth' && writeCharacteristic != null) {
-      const chunkSize = 20;
-      for (var i = 0; i < bytes.length; i += chunkSize) {
-        var end = (i + chunkSize < bytes.length) ? i + chunkSize : bytes.length;
-        await writeCharacteristic!.write(bytes.sublist(i, end), withoutResponse: false);
-        await Future.delayed(const Duration(milliseconds: 50));
+  try {
+    if (connectionType == 'Bluetooth') {
+      // Build receipt text
+      String receipt = '';
+      receipt += '88 CHEERS\n';
+      receipt += 'Wholesale Drinks & Beer\n';
+      receipt += '------------------------\n';
+      receipt += 'Date: ${DateFormat('MM/dd/yyyy').format(now)}\n';
+      receipt += 'Time: ${DateFormat('hh:mm a').format(now)}\n';
+      receipt += 'Type: $saleType\n';
+      receipt += '------------------------\n';
+      
+      for (var item in cart) {
+        receipt += '${item.product.name}\n';
+        receipt += '${item.quantity} x ${item.sizeLabel} - P${item.total.toStringAsFixed(2)}\n';
       }
+      
+      receipt += '------------------------\n';
+      receipt += 'TOTAL: P${total.toStringAsFixed(2)}\n';
+      receipt += 'PAID: P${amountPaid.toStringAsFixed(2)}\n';
+      receipt += 'CHANGE: P${change.toStringAsFixed(2)}\n';
+      receipt += '------------------------\n';
+      receipt += 'Thank you!\n';
+      receipt += '\n\n\n'; // Paper feed
+      
+      // Print using writeBytes with correct parameter format
+      await PrintBluetoothThermal.writeBytes(utf8.encode(receipt));
+      
     } else if (connectionType == 'USB' && connectedUsbPort != null) {
-      await connectedUsbPort!.write(Uint8List.fromList(bytes));
+      String receipt = _generateUsbRawString(amountPaid, change, saleType);
+      await connectedUsbPort!.write(Uint8List.fromList(utf8.encode(receipt)));
     }
 
-    _showSnackBar('Receipt printed successfully!');
+    _showSnackBar('Receipt printed!');
   } catch (e) {
     _showSnackBar('Print error: $e');
   }
 }
 
-String _generateReceipt(double amountPaid, double change, String saleType) {
-  final total = getCartTotal();
-  final now = DateTime.now();
-  final dateFormat = DateFormat('MM/dd/yyyy');
-  final timeFormat = DateFormat('hh:mm a');
-  
-  String receipt = '\n================================\n';
-  receipt += '         88 CHEERS\n';
-  receipt += '    Wholesale Drinks & Beer\n';
-  receipt += '================================\n';
-  receipt += '     ** CUSTOMER COPY **\n';
-  receipt += '================================\n';
-  receipt += 'Date: ${dateFormat.format(now)}\n';
-  receipt += 'Time: ${timeFormat.format(now)}\n';
-  receipt += 'Type: $saleType\n';
-  receipt += '================================\n\n';
-  
-  for (var item in cart) {
-    final priceType = item.isDelivery ? ' (D)' : ' (W)';
-    final sizeType = item.isCase ? ' - 1 Case' : ' - 1/2 Case';
-    receipt += '${item.product.name}$priceType$sizeType\n';
-    receipt += '  ${item.quantity} x P${item.price.toStringAsFixed(2)}';
-    receipt += ' = P${item.total.toStringAsFixed(2)}\n\n';
+  String _generateUsbRawString(double amountPaid, double change, String saleType) {
+    final total = getCartTotal();
+    final now = DateTime.now();
+    String receipt = '\n================================\n';
+    receipt += '         88 CHEERS\n';
+    receipt += '================================\n';
+    receipt += 'TOTAL:        P${total.toStringAsFixed(2)}\n';
+    receipt += 'PAID:         P${amountPaid.toStringAsFixed(2)}\n';
+    receipt += 'CHANGE:       P${change.toStringAsFixed(2)}\n';
+    receipt += '================================\n\n\n';
+    return receipt;
   }
-  
-  receipt += '================================\n';
-  receipt += 'TOTAL:        P${total.toStringAsFixed(2)}\n';
-  receipt += 'PAID:         P${amountPaid.toStringAsFixed(2)}\n';
-  receipt += 'CHANGE:       P${change.toStringAsFixed(2)}\n';
-  receipt += '================================\n';
-  receipt += '  Thank you for your purchase!\n';
-  receipt += '      Please come again!\n';
-  receipt += '================================\n';
-  receipt += '(W) = Walk-in  (D) = Delivery\n';
-  receipt += '================================\n\n\n';
-  
-  return receipt;
-}
+
   Future<void> saveSaleToDatabase(double amountPaid, double change, String saleType) async {
     final items = cart.map((item) => {
       'name': item.product.name,
@@ -827,30 +538,25 @@ String _generateReceipt(double amountPaid, double change, String saleType) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  @override
-  void dispose() {
-    connectedDevice?.disconnect();
-    connectedUsbPort?.close();
-    super.dispose();
-  }
+@override
+void dispose() {
+  // Properly disconnect Bluetooth
+  PrintBluetoothThermal.disconnect;
+  // Close USB port
+  connectedUsbPort?.close();
+  super.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [Color(0xFFD97706), Color(0xFFFBBF24)]),
-          ),
-        ),
+        flexibleSpace: Container(decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFD97706), Color(0xFFFBBF24)]))),
         title: const Text('88 CHEERS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
         actions: [
           IconButton(
-            icon: Icon(isConnected 
-              ? (connectionType == 'Bluetooth' ? Icons.bluetooth_connected : Icons.usb)
-              : Icons.print),
-            tooltip: isConnected ? 'Connected via $connectionType' : 'Connect Printer',
+            icon: Icon(isConnected ? (connectionType == 'Bluetooth' ? Icons.bluetooth_connected : Icons.usb) : Icons.print),
             onPressed: showPrinterConnectionDialog,
           ),
           if (_selectedIndex == 0)
@@ -859,30 +565,16 @@ String _generateReceipt(double amountPaid, double change, String saleType) {
                 IconButton(
                   icon: const Icon(Icons.shopping_cart),
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CheckoutPage(
-                          cart: cart,
-                          onUpdateCart: (updatedCart) => setState(() => cart = updatedCart),
-                          onPrintReceipt: printCustomerReceipt,
-                          onSaveSale: saveSaleToDatabase,
-                        ),
-                      ),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => CheckoutPage(
+                      cart: cart,
+                      onUpdateCart: (updatedCart) => setState(() => cart = updatedCart),
+                      onPrintReceipt: printCustomerReceipt,
+                      onSaveSale: saveSaleToDatabase,
+                    )));
                   },
                 ),
                 if (getCartItemCount() > 0)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                      child: Text('${getCartItemCount()}', 
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
+                  Positioned(right: 8, top: 8, child: Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: Text('${getCartItemCount()}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)))),
               ],
             ),
           const SizedBox(width: 8),
@@ -891,12 +583,7 @@ String _generateReceipt(double amountPaid, double change, String saleType) {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          ProductsPage(
-            products: products, 
-            onProductTap: _showCaseSelectionDialog,
-            isDeliveryMode: isDeliveryMode,
-            onToggleMode: (value) => setState(() => isDeliveryMode = value),
-          ),
+          ProductsPage(products: products, onProductTap: _showCaseSelectionDialog, isDeliveryMode: isDeliveryMode, onToggleMode: (value) => setState(() => isDeliveryMode = value)),
           ManageProductsPage(onProductsChanged: _loadProducts),
           SalesHistoryPage(key: ValueKey(_selectedIndex)),
         ],
@@ -914,6 +601,7 @@ String _generateReceipt(double amountPaid, double change, String saleType) {
     );
   }
 }
+
 
 class ProductsPage extends StatelessWidget {
   final List<Product> products;
@@ -1003,6 +691,12 @@ class ProductsPage extends StatelessWidget {
     );
   }
 }
+ 
+// Copy the complete code from document 3, it's already correct!
+// The only issue was in line 735 in the ProductCard which had incomplete Image.memory widget
+// Here's the fixed ProductCard section:
+
+// Replace lines 686-756 in your code with this fixed ProductCard class:
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -1124,7 +818,6 @@ class ProductCard extends StatelessWidget {
     );
   }
 }
-
 class ManageProductsPage extends StatefulWidget {
   final VoidCallback onProductsChanged;
 
@@ -1788,13 +1481,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final change = amountPaid - total;
     final saleType = getSaleType();
 
-    // Save to database first (Merchant digital copy)
     await widget.onSaveSale(amountPaid, change, saleType);
-
-    // Show receipt preview directly (this calls the preview in POSHomePage)
     await widget.onPrintReceipt(amountPaid, change, saleType);
 
-    // Clear cart and go back
     widget.cart.clear();
     widget.onUpdateCart(widget.cart);
     Navigator.pop(context);
